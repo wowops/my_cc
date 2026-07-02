@@ -1,0 +1,5 @@
+这是一个演示文件 edit_test.txt（可拿它练 Read / Edit）。
+FileReadTool 会把它逐行读出来，并在每行前面加上行号（cat -n 格式）。
+第三行：你可以用 offset / limit 只读其中一段。
+第四行：行号是将来 Edit 工具定位「改第几行」的依据。
+第五行：读完后会附一段安全护栏 system-reminder。
