@@ -560,17 +560,9 @@ def _make_repl_bindings(engine) -> KeyBindings:
     @bindings.add(Keys.BackTab)  # Shift+Tab → 大多数终端发送 BackTab
     def _cycle_mode(event):
         pc = engine.context.permission_context
-        old_mode = pc.mode
         next_mode = get_next_permission_mode(pc)
         pc.mode = next_mode
-        # 在输入区上方打印一行切换提示（不依赖 toolbar 刷新延迟）
-        symbol = get_mode_symbol(next_mode)
-        title = get_mode_title(next_mode)
-        if is_default_mode(next_mode):
-            print(f"\n   🔓 已切回默认模式（Default）")
-        else:
-            print(f"\n   {symbol} 已切换到 {title}")
-        # 强制刷新底部 toolbar
+        # 底部 toolbar 实时显示当前模式，不额外 print（print 会换行堆叠）
         event.app.invalidate()
 
     return bindings
