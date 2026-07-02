@@ -1,7 +1,6 @@
 # my_cc —— Claude Code 的 Python 复现
 
 用 Python 复现 Claude Code 的核心架构（对照 TS 源码快照）。
-本文件只讲**当前代码结构与怎么跑**；
 
 - 各模块/工具的**实现思路**见 `docs/`（每个代码文件对应一篇）。
 - 当前复现版与完整 `.ts` 源码的**差距清单**见 [`improvements.md`](improvements.md)。
@@ -10,7 +9,7 @@
 
 ## 如何运行
 
-在项目根目录 `claude-code/` 下打开 PowerShell，用 venv 里的 python 运行：
+在项目根目录 `claude-code/` 下打开 PowerShell，例如：
 
 ```powershell
 # 交互式 REPL（启动后在 > 后输入消息；/help 看命令，Esc 中断思考，Ctrl+C×2 退出）
@@ -28,8 +27,7 @@ my_cc\.venv\Scripts\python.exe my_cc\src\main.py --resume
 
 **默认用 mock**（本地假回复，无需联网）。想接**真实大模型**（如 DeepSeek）：
 打开 `my_cc\.env`，把 `ANTHROPIC_API_KEY=` 换成你的密钥即可——程序启动自动加载 `.env`，
-检测到密钥就切真实 API，否则回退 mock。换厂商只改 `.env` 里的端点/密钥/模型名三项
-（变量名沿用官方 Claude Code，原理见 `src/anthropic_api.py` 顶部）。
+检测到密钥就切真实 API，否则回退 mock。换厂商只改 `.env` 里的端点/密钥/模型名三项。
 
 ---
 
@@ -79,25 +77,6 @@ main.py（入口/模式路由）
 
 `run_tools()` 按并发安全性分组：**只读工具并行 / 写工具串行**（`partition_tool_calls`）。
 权限决策走 `Tool.py` 的 `check_permissions`——写操作要授权，门挂在 `not is_read_only()`。
-
----
-
-## docs/ —— 实现思路文档
-
-| 文档 | 对应代码 |
-|---|---|
-| `docs/Tool.md` | `src/Tool.py`（工具抽象 + 权限系统讲义） |
-| `docs/QueryEngine.md` | `src/QueryEngine.py`（Agent Loop 讲义） |
-| `docs/commands.md` | `src/commands/`（斜线命令系统讲义） |
-| `docs/main.md` | `src/main.py`（CLI 入口讲义） |
-| `docs/file_read.md` | `src/tools/file_read.py` |
-| `docs/file_edit.md` | `src/tools/file_edit.py` |
-| `docs/bash.md` | `src/tools/bash.py` |
-| `docs/glob.md` | `src/tools/glob.py` |
-| `docs/grep.md` | `src/tools/grep.py` |
-| `docs/session_persistence.md` | `src/session_persistence.py` |
-
-> 约定：每新增一个代码文件，配一篇同名 `docs/<name>.md` 记录整体思路；代码内注释只讲局部细节。
 
 ---
 
