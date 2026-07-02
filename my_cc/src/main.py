@@ -39,6 +39,13 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Optional
 
+# prompt_toolkit：终端富文本输入（方向键、历史、Shift+Tab 快捷键）。
+# 曾用 mouse_support=True 发现鼠标拖选要按 Shift，效果不理想；这次不开 mouse_support。
+from prompt_toolkit import PromptSession
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.keys import Keys
+from prompt_toolkit.styles import Style
+
 # msvcrt：Windows 专属，能「不阻塞地」探测/读取键盘单个按键（用于 Esc 中断）。
 # 非 Windows（或被重定向）时不存在，置 None，相关功能自动降级为「不监听 Esc」。
 try:
@@ -62,7 +69,14 @@ try:
 except ImportError:
     pass  # 未安装 python-dotenv：跳过，仅影响「从 .env 读密钥」这一便利
 
-from Tool import BaseTool, ToolUseContext  # noqa: E402
+from Tool import (  # noqa: E402
+    BaseTool,
+    ToolUseContext,
+    get_next_permission_mode,
+    get_mode_symbol,
+    get_mode_title,
+    is_default_mode,
+)
 from QueryEngine import (  # noqa: E402
     QueryEngine,
     QueryEngineConfig,
@@ -526,6 +540,54 @@ async def run_headless(prompt: str, cwd: str) -> None:
 # 一个引擎实例贯穿整个会话，所以 engine.messages 会跨多轮累积（上下文记忆）。
 
 
+# =============================================================================
+# 五·补、prompt_toolkit 辅助：Shift+Tab 模式切换 + 底部模式指示器
+# =============================================================================
+# 对应 TS 的 PromptInput.tsx handleCycleMode + PromptInputFooterLeftSide ModeIndicator。
+# 用户按 Shift+Tab 在 default → acceptEdits → plan → bypassPermissions → default 间循环。
+# 非 default 模式时，输入框底部显示当前模式符号 + 名称（如 "⏸ Plan Mode on"）。
+
+# prompt_toolkit 样式：底部 toolbar 用暗色
+_REPL_STYLE = Style.from_dict({
+    "bottom-toolbar": "#888888",
+})
+
+
+def _make_repl_bindings(engine) -> KeyBindings:
+    """创建 REPL 输入框的快捷键绑定。目前只有 Shift+Tab 模式切换。"""
+    bindings = KeyBindings()
+
+    @bindings.add(Keys.BackTab)  # Shift+Tab → 大多数终端发送 BackTab
+    def _cycle_mode(event):
+        pc = engine.context.permission_context
+        old_mode = pc.mode
+        next_mode = get_next_permission_mode(pc)
+        pc.mode = next_mode
+        # 在输入区上方打印一行切换提示（不依赖 toolbar 刷新延迟）
+        symbol = get_mode_symbol(next_mode)
+        title = get_mode_title(next_mode)
+        if is_default_mode(next_mode):
+            print(f"\n   🔓 已切回默认模式（Default）")
+        else:
+            print(f"\n   {symbol} 已切换到 {title}")
+        # 强制刷新底部 toolbar
+        event.app.invalidate()
+
+    return bindings
+
+
+def _make_mode_toolbar(engine):
+    """返回一个 callable，每次 prompt_toolkit 渲染时调用，返回底部模式指示器文本。"""
+    def _toolbar() -> str:
+        pc = engine.context.permission_context
+        if is_default_mode(pc.mode):
+            return ""  # default 模式不显示（对齐 TS 的 hasActiveMode 判断）
+        symbol = get_mode_symbol(pc.mode)
+        title = get_mode_title(pc.mode)
+        return f" {symbol} {title} on  (Shift+Tab 切换模式)"
+    return _toolbar
+
+
 async def launch_repl(
     cwd: str,
     *,
@@ -548,14 +610,21 @@ async def launch_repl(
     spinner = Spinner()
     spinner.start()  # 后台绘制任务常驻；平时 pause，等待时 resume
     armed_to_exit = False  # 上一次是不是已经按过一次 Ctrl+C（连按两次才退出）
+
+    # ★ prompt_toolkit 替代 input()：支持方向键编辑、↑↓ 翻历史、Shift+Tab 切换模式。
+    #   PromptSession 在循环外创建：它内部维护输入历史，跨轮次共享。
+    session = PromptSession(
+        key_bindings=_make_repl_bindings(engine),
+        bottom_toolbar=_make_mode_toolbar(engine),
+        style=_REPL_STYLE,
+    )
+
     try:
         while True:  # ★ REPL 的真身：读一条、处理一条、再读下一条
             try:
-                # 「Ctrl+C×2 退出」指引每轮都出现；用内置 input() 读一行。
-                #   input() 的 Ctrl+C / Ctrl+D 会抛 KeyboardInterrupt / EOFError，
-                #   正好被下面两个 except 分支接住。
-                print("\n（Ctrl+C×2 退出）")
-                user_input = input("> ").strip()
+                # Ctrl+C → KeyboardInterrupt；Ctrl+D → EOFError（和内置 input() 一致）。
+                print("\n（Ctrl+C×2 退出  |  Shift+Tab 切换模式）")
+                user_input = (await session.prompt_async("> ")).strip()
             except EOFError:
                 # Ctrl+D：直接干净退出
                 print("\n再见！")

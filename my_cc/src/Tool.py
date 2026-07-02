@@ -37,8 +37,71 @@ class PermissionResult(BaseModel):
 class PermissionMode(str, Enum):
     DEFAULT = "default"                    # 正常模式：危险操作弹窗问用户
     PLAN = "plan"                          # 计划模式：只能读，不能写
+    ACCEPT_EDITS = "acceptEdits"           # 接受编辑：安全文件操作 + Edit/Write 自动放行
     BYPASS_PERMISSIONS = "bypassPermissions"  # 跳过一切权限检查（--dangerouslySkipPermissions）
     AUTO = "auto"                          # 自动模式：按规则自动批准
+
+
+# =============================================================================
+# 权限模式元数据与循环逻辑
+# =============================================================================
+# 对应 TS src/utils/permissions/PermissionMode.ts（符号/标题/颜色）
+#        + src/utils/permissions/getNextPermissionMode.ts（循环顺序）
+#
+# 循环顺序（外部用户）：
+#   default → acceptEdits → plan → bypassPermissions（如果可用）→ default
+#
+# default 模式不显示指示器（和 TS 一样：isDefaultMode 时不渲染 modePart）。
+
+_MODE_META: dict = {
+    PermissionMode.DEFAULT:            {"title": "Default",              "symbol": ""},
+    PermissionMode.PLAN:               {"title": "Plan Mode",            "symbol": "⏸"},
+    PermissionMode.ACCEPT_EDITS:       {"title": "Accept Edits",         "symbol": "⏵⏵"},
+    PermissionMode.BYPASS_PERMISSIONS: {"title": "Bypass Permissions",   "symbol": "⏵⏵"},
+    PermissionMode.AUTO:               {"title": "Auto Mode",            "symbol": "⏵⏵"},
+}
+
+
+def get_mode_title(mode: PermissionMode) -> str:
+    """返回模式的用户可见标题（如 'Plan Mode'）。"""
+    return _MODE_META.get(mode, {}).get("title", str(mode))
+
+
+def get_mode_symbol(mode: PermissionMode) -> str:
+    """返回模式的终端符号（如 '⏸'）。default 模式返回空字符串。"""
+    return _MODE_META.get(mode, {}).get("symbol", "")
+
+
+def is_default_mode(mode: PermissionMode) -> bool:
+    """default 模式下不显示指示器（对齐 TS 的 isDefaultMode）。"""
+    return mode == PermissionMode.DEFAULT
+
+
+def get_next_permission_mode(pc: "ToolPermissionContext") -> PermissionMode:
+    """计算 Shift+Tab 循环的下一个模式。
+
+    循环顺序：
+    default → acceptEdits → plan → bypassPermissions（如果可用）→ default
+    如果 bypassPermissions 不可用，plan 之后直接回 default。
+
+    对应 TS src/utils/permissions/getNextPermissionMode.ts。
+    """
+    current = pc.mode
+    bypass_available = pc.is_bypass_permissions_mode_available
+
+    if current == PermissionMode.DEFAULT:
+        return PermissionMode.ACCEPT_EDITS
+    elif current == PermissionMode.ACCEPT_EDITS:
+        return PermissionMode.PLAN
+    elif current == PermissionMode.PLAN:
+        if bypass_available:
+            return PermissionMode.BYPASS_PERMISSIONS
+        return PermissionMode.DEFAULT
+    elif current == PermissionMode.BYPASS_PERMISSIONS:
+        return PermissionMode.DEFAULT
+    else:
+        # AUTO 等其他模式也回到 default
+        return PermissionMode.DEFAULT
 
 
 class ToolPermissionContext(BaseModel):
@@ -205,7 +268,13 @@ class BaseTool(ABC, BaseModel):
         if pc.mode == PermissionMode.BYPASS_PERMISSIONS and pc.is_bypass_permissions_mode_available:
             return PermissionResult(behavior=PermissionBehavior.ALLOW, updated_input=args)
 
-        # 2) plan：计划模式只读，任何写操作一律拒绝
+        # 2) acceptEdits：Edit / Write 工具自动放行（它们是"接受编辑"的核心）。
+        #    对应 TS：acceptEdits 模式下各工具的 checkPermissions 自行判断；
+        #    Bash/PowerShell 有独立 modeValidation，Edit/Write 无显式检查但语义上本质就是"接受编辑"。
+        if pc.mode == PermissionMode.ACCEPT_EDITS and self.name in ("Edit", "Write"):
+            return PermissionResult(behavior=PermissionBehavior.ALLOW, updated_input=args)
+
+        # 3) plan：计划模式只读，任何写操作一律拒绝
         if pc.mode == PermissionMode.PLAN and not self.is_read_only():
             return PermissionResult(
                 behavior=PermissionBehavior.DENY,
@@ -213,7 +282,7 @@ class BaseTool(ABC, BaseModel):
                 message=f"计划模式（plan）下禁止执行非只读工具 [{self.name}]。",
             )
 
-        # 3) 黑名单优先于白名单：命中即拒
+        # 4) 黑名单优先于白名单：命中即拒
         if deny_rules:
             return PermissionResult(
                 behavior=PermissionBehavior.DENY,
@@ -221,11 +290,11 @@ class BaseTool(ABC, BaseModel):
                 message=f"工具 [{self.name}] 命中永久拒绝规则。",
             )
 
-        # 4) 白名单：命中直接放行
+        # 5) 白名单：命中直接放行
         if allow_rules:
             return PermissionResult(behavior=PermissionBehavior.ALLOW, updated_input=args)
 
-        # 5) 询问名单 / 写操作：需要问用户
+        # 6) 询问名单 / 写操作：需要问用户
         #    ★ 安全模型核心：弹窗开关挂在「是不是写操作」(not is_read_only) 上，
         #      而不是「够不够破坏性」(is_destructive)。否则像 Edit 这种「会改盘、
         #      但算不上 rm -rf 破坏性」的工具会从缝里漏过去、静默改文件。
@@ -260,7 +329,7 @@ class BaseTool(ABC, BaseModel):
                     message="用户拒绝了本次操作。",
                 )
 
-        # 6) 默认：非破坏性操作放行
+        # 7) 默认：非破坏性操作放行
         return PermissionResult(behavior=PermissionBehavior.ALLOW, updated_input=args)
 
     # --- UI 渲染层 (极简复现) ---

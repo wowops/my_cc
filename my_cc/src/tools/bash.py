@@ -95,6 +95,9 @@ _GIT_READ_SUBCMDS = {
     "ls-files", "ls-tree", "cat-file", "shortlog", "reflog", "whatchanged",
 }
 
+# acceptEdits 模式下自动放行的安全文件系统命令（对应 TS BashTool/modeValidation.ts）
+_ACCEPT_EDITS_ALLOWED_CMDS = {"mkdir", "touch", "rm", "rmdir", "mv", "cp", "sed"}
+
 _OP_SPLIT = re.compile(r"\|\||&&|[|;&]|\n")          # 按 shell 操作符切分
 _ENV_ASSIGN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=\S*$")  # 前导环境变量赋值 VAR=val
 
@@ -241,17 +244,23 @@ class BashTool(BaseTool):
                 message="计划模式（plan）下禁止执行会改动系统的命令。",
             )
 
-        # 3) 只读命令：自动放行（对应真 CC 对 ls/cat/grep 等免确认）
+        # 3) acceptEdits：安全的文件系统命令自动放行（对应 TS modeValidation.ts）
+        if pc.mode == PermissionMode.ACCEPT_EDITS and not read_only:
+            base = _base_command(command)
+            if base in _ACCEPT_EDITS_ALLOWED_CMDS:
+                return PermissionResult(behavior=PermissionBehavior.ALLOW, updated_input=args)
+
+        # 4) 只读命令：自动放行（对应真 CC 对 ls/cat/grep 等免确认）
         if read_only:
             return PermissionResult(behavior=PermissionBehavior.ALLOW, updated_input=args)
 
         reasons = _dangerous_reasons(command)
 
-        # 4) auto 模式：非高危自动放行
+        # 5) auto 模式：非高危自动放行
         if pc.mode == PermissionMode.AUTO and not reasons:
             return PermissionResult(behavior=PermissionBehavior.ALLOW, updated_input=args)
 
-        # 5) 其余（写/危险）：问用户。非交互式会话无法弹窗 → 返回 ASK 交上层。
+        # 6) 其余（写/危险）：问用户。非交互式会话无法弹窗 → 返回 ASK 交上层。
         if context.options.is_non_interactive_session:
             return PermissionResult(
                 behavior=PermissionBehavior.ASK,

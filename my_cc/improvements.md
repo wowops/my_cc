@@ -41,7 +41,10 @@
 ### 权限系统（`src/Tool.py` + 真 CC 的 `src/hooks/toolPermission/`）
 
 - [√] 写操作要授权（弹窗 / 非交互返回 ASK）。
-- [ ] 交互式权限提示的**富 UI**（当前用 `input()` y/n，非交互会话直接 ASK 交上层）。
+- [√] **Shift+Tab 模式切换**：default → acceptEdits → plan → bypassPermissions 四档循环；
+      acceptEdits 下 Edit/Write/Bash 安全文件命令自动放行；底部 toolbar 显示当前模式指示器。
+      对应 TS `getNextPermissionMode.ts` + `modeValidation.ts` + `PromptInputFooterLeftSide.tsx`。
+- [ ] 交互式权限提示的**富 UI**（y/n 弹窗仍用 `input()`，尚未换成 prompt_toolkit 对话框）。
 - [ ] 权限规则**持久化**（allow/deny/ask 规则现在只在内存里，重启即失）。
 
 ### 上下文与会话
@@ -83,10 +86,9 @@
 
 - [ ] 更多斜线命令（`/config`、`/cost`、`/status` 等）—— `src/commands/*`。
 - [ ] 真正的富终端 UI：用 `rich` / `textual` 替换 `main.py` 里 `render()` 的 `print()` —— 对应 React + Ink。
-- [ ] **REPL 输入框的富文本行编辑**：当前 `main.py` 用最朴素的内置 `input()`，没有方向键 /
-      Home/End / ↑↓ 翻历史等能力。曾用 `prompt_toolkit` 实现，但开 `mouse_support=True`（鼠标点击
-      定位光标）效果不理想（拖拽选中文字要按住 Shift），已整体退回 `input()`。回头解决：重新引入
-      `prompt_toolkit`（方向键 + 历史）但**不开 `mouse_support`**，或单独调教鼠标交互。
+- [√] **REPL 输入框的富文本行编辑**：已用 `prompt_toolkit` 替换内置 `input()`，支持
+      方向键 / Home/End / ↑↓ 翻历史 / Shift+Tab 切换权限模式。**不开 `mouse_support`**
+      （之前开启后拖拽选中要按 Shift，体验差）。底部 toolbar 显示当前模式指示器。
 - [ ] MCP 连接（外部工具/数据源协议）—— `src/services/mcp/`。
 - [ ] 多 Agent / 子任务（`AgentTool`、`TaskCreateTool`、`TeamCreateTool`）—— `src/coordinator/`。
 - [ ] IDE ↔ CLI 桥接（VS Code / JetBrains）—— `src/bridge/`。
