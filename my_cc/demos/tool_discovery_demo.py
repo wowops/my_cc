@@ -1,7 +1,7 @@
 """
 get_tools() 自动发现工具的教学/回归脚本（带断言）。验证：
   1. _is_concrete_tool 判据：BaseTool 本身 / 抽象子类 → False；真实工具类 → True。
-  2. get_tools() 扫描 tools/ 包，恰好发现 5 个已知工具（Bash/Edit/Glob/Grep/Read）。
+  2. get_tools() 扫描 tools/ 包，恰好发现 6 个已知工具（Bash/Edit/Glob/Grep/Read/Write）。
   3. 结果稳定有序（按 name 排序）、每个都是 BaseTool 的具体实例。
   4. memoize：lru_cache 让多次调用返回同一对象（只扫描一次）。
 
@@ -56,8 +56,8 @@ def run() -> None:
     # ---- 2. 扫描结果 ----
     print("\n[2] get_tools() 扫描结果")
     names = [t.name for t in tools]
-    check("发现 5 个工具", len(tools), 5)
-    check("恰好是这 5 个", sorted(names), ["Bash", "Edit", "Glob", "Grep", "Read"])
+    check("发现 6 个工具", len(tools), 6)
+    check("恰好是这 6 个", sorted(names), ["Bash", "Edit", "Glob", "Grep", "Read", "Write"])
 
     # ---- 3. 有序 + 都是具体实例 ----
     print("\n[3] 稳定有序 + 类型正确")

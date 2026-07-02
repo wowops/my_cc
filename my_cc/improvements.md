@@ -21,7 +21,8 @@
 
 - [√] `get_tools()` 改为运行时扫描 `tools/` 包自动发现工具（`importlib` + `pkgutil` + `inspect`，
       `lru_cache` memoize、按 name 排序）。以后加工具丢个 `.py` 即可，不再两处手动登记。见 `docs/main.md` 第五节。
-- [√] 补搜索工具：`Glob` / `Grep` 已落地（见 `docs/glob.md`、`docs/grep.md`）。仍缺 `Write`、`LS` 等。
+- [√] 补搜索工具：`Glob` / `Grep` 已落地（见 `docs/glob.md`、`docs/grep.md`）。仍缺 `LS` 等。
+- [√] 补 `Write` 工具：`file_write.py`（创建/覆盖文件，先 Read 后 Write 闭环，staleness check，17 条回归断言）。
 - [√] 撤掉 `QueryEngine.build_dir_snapshot()` 临时目录树拐杖 —— Glob/Grep 就位后模型能自己探索目录，已移除。
 - [ ] **Grep 默认忽略目录 / `.gitignore`**（与真实 Grep「日常体感」差距最大的一条）：当前 `grep.py::_iter_files`
       只排除 6 个 VCS 目录，会一头扎进 `.venv`/`node_modules`/`__pycache__`/`dist`，结果被噪声淹没。
@@ -33,7 +34,9 @@
 ### 接真实模型（`src/anthropic_api.py`）
 
 - [√] mock → 真实流式调用（Anthropic 兼容端点，已支持 DeepSeek / 真 Claude / Kimi 等）。
-- [ ] `/compact` 的 `summarize_conversation` 接真实模型摘要 —— 对应 `src/services/compact/compact.ts`（当前 mock）。
+- [√] `/compact` 的 `summarize_conversation` 接真实模型摘要 —— 对应 `src/services/compact/compact.ts`（当前 mock）。
+      摘要器现在是 `_safe_summarize`：先试真实 API（非流式、关闭 thinking、中文结构化 prompt），失败自动回退 mock。
+      Demo 流程不变，无 API 时照样跑。
 
 ### 权限系统（`src/Tool.py` + 真 CC 的 `src/hooks/toolPermission/`）
 

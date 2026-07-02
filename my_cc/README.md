@@ -45,6 +45,7 @@ my_cc/
 │  │  ├─ file_read.py    # Read：按绝对路径读文本文件，cat -n 行号
 │  │  ├─ file_edit.py    # Edit：精确字符串替换（先 Read 后 Edit 闭环）
 │  │  ├─ bash.py         # Bash：执行 shell 命令（权限系统的主战场）
+│  │  ├─ file_write.py   # Write：创建或覆盖文件（先 Read 后 Write 闭环）
 │  │  ├─ glob.py         # Glob：按文件名模式（**/*.py）找文件
 │  │  └─ grep.py         # Grep：用正则在文件内容里搜索（纯 Python）
 │  └─ commands/          # 斜线命令
@@ -88,6 +89,7 @@ main.py（入口/模式路由）
 |---|---|---|
 | `demos/tool_demo.py` | Tool.py 权限决策表 + 并发/校验/取消 | ✅ 断言（17 条） |
 | `demos/file_edit_demo.py` | Edit：读改闭环 / staleness / 唯一性 / 新建 | ✅ 断言（14 条） |
+| `demos/file_write_demo.py` | Write：创建/覆盖 / 未读拒绝 / staleness / 参数校验 | ✅ 断言（17 条） |
 | `demos/bash_demo.py` | Bash：只读判定 / 高危识别 / 权限决策 / 执行+超时 | ✅ 断言（21 条） |
 | `demos/glob_demo.py` | Glob：匹配 / 递归 / 排序 / 目录过滤 / 截断 / 校验 | ✅ 断言（14 条） |
 | `demos/grep_demo.py` | Grep：三种 output_mode / 上下文 / glob/type / 分页 / multiline | ✅ 断言（23 条） |
