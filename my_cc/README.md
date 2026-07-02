@@ -1,6 +1,6 @@
 # my_cc —— Claude Code 的 Python 复现
 
-用 Python 复现 Claude Code 的核心架构（对照 TS 源码快照 `claude-code-main/`）。
+用 Python 复现 Claude Code 的核心架构（对照 TS 源码快照）。
 本文件只讲**当前代码结构与怎么跑**；
 
 - 各模块/工具的**实现思路**见 `docs/`（每个代码文件对应一篇）。
