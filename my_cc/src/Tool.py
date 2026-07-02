@@ -105,10 +105,12 @@ class ToolUseContext(BaseModel):
     class Config:
         arbitrary_types_allowed = True # 允许注入函数或非 Pydantic 对象
         
-    def log_progress(self, msg: str):
-        # 对应 TS 中的 onCompactProgress 或是直接给终端发通知
-        print(f"🔄 [进度] {msg}")
-        
+    # 进度回调：由 UI 层（main.py）注入，供压缩/加载等场景实时更新提示文字 + 百分比。
+    # percent=None 表示无进度条（只更新文字）；0.0~1.0 表示百分比进度条。
+    # 对应 TS src/services/compact/compact.ts 的 onCompactProgress。
+    on_progress: Optional[Callable[[str, Optional[float]], None]] = None
+
+
     @property
     def is_aborted(self) -> bool:
         """检查任务是否应该取消"""

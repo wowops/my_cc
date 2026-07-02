@@ -298,7 +298,14 @@ def _enable_ansi() -> None:
 
 
 class Spinner:
-    """单行、原地刷新的状态指示器。线程模型：一个 asyncio 后台任务负责画。"""
+    """单行、原地刷新的状态指示器。支持两种模式：
+    1. 转圈模式（默认）：⠋ 思考中… (12s · 128 tok · Esc 中断)
+    2. 进度条模式：  ⠋ 压缩对话中 [████████░░░░░░] 45% (12s · 180 tok · Esc 中断)
+
+    线程模型：一个 asyncio 后台任务负责画。
+    """
+
+    _BAR_WIDTH = 20  # 进度条字符宽度
 
     def __init__(self) -> None:
         self._task: Optional[asyncio.Task] = None
@@ -309,6 +316,9 @@ class Spinner:
         self._turn_start = 0.0        # 本轮开始时刻，用于算 elapsed
         self._resume_at = 0.0         # 最近一次 resume 的时刻，用于 150ms 延迟出现
         self._last_len = 0            # 上次画的字符数，用于清行
+        self._progress_msg = ""       # 进度条模式下的提示文字
+        self._progress_pct: Optional[float] = None  # None=转圈模式，0.0~1.0=进度条模式
+        self._tokens = 0              # 本轮累计输出 token 数（估值）
         # 只有真正的交互式终端才画；被管道/重定向时（isatty=False）保持静默，避免污染输出。
         self._enabled = sys.stdout.isatty()
         if self._enabled:
@@ -329,18 +339,23 @@ class Spinner:
             self._task = None
 
     def new_turn(self) -> None:
-        """一轮新对话开始：重置计时、换个动词、解除抑制。"""
+        """一轮新对话开始：重置计时、换个动词、解除抑制、清除进度条状态。"""
         self._turn_start = time.monotonic()
         self._verb = random.choice(_VERBS)
         self._suppress = False
+        self._progress_pct = None
+        self._progress_msg = ""
+        self._tokens = 0
 
     def thinking_label(self) -> str:
         return f"{self._verb}…"
 
     def resume(self, label: Optional[str] = None) -> None:
-        """重新进入『等待』状态。label=None 表示沿用上一个短语。"""
+        """重新进入『等待』状态（转圈模式）。label=None 表示沿用上一个短语。"""
         if label is not None:
             self._label = label
+        self._progress_pct = None   # 切回转圈模式
+        self._progress_msg = ""
         self._resume_at = time.monotonic()
         self._active = True
 
@@ -353,13 +368,37 @@ class Spinner:
         if on:
             self._clear()
 
+    def add_tokens(self, text: str) -> None:
+        """累计本轮输出 token 数。text 是本段增量文本，用 len//3 粗估 token 数。"""
+        # 中英文平均 ~3 字符/token（英文 ~4，中文 ~1-2，取折中）
+        self._tokens += max(1, len(text) // 3)
+
+    def set_progress(self, msg: str, percent: float) -> None:
+        """切换到进度条模式：msg=提示文字，percent=0.0~1.0。"""
+        self._progress_msg = msg
+        self._progress_pct = max(0.0, min(1.0, percent))
+        self._label = msg        # 同时更新 label（backward compat）
+        self._resume_at = time.monotonic()
+        self._active = True
+
     def _clear(self) -> None:
-        # \r 回行首，\033[K 擦到行尾——不管行里有多少中文/emoji（占 2 列）都能清干净。
-        # 旧版用「空格 * 字符数」清行，但中文按字符数算偏窄，会漏掉右边的尾巴（如「中断)」残留）。
         if self._enabled and self._last_len:
             sys.stdout.write("\r\033[K")
             sys.stdout.flush()
             self._last_len = 0
+
+    @staticmethod
+    def _render_bar(percent: float, width: int = 20) -> str:
+        """渲染进度条字符串：'[████████░░░░░░░░░░░░] 45%'"""
+        filled = int(round(percent * width))
+        filled = max(0, min(width, filled))
+        bar = "█" * filled + "░" * (width - filled)
+        pct = int(round(percent * 100))
+        return f"[{bar}] {pct}%"
+
+    def _token_part(self) -> str:
+        """token 显示片段：有 token 时显示 '128 tok · '，否则为空。"""
+        return f"{self._tokens} tok · " if self._tokens > 0 else ""
 
     async def _run(self) -> None:
         frames = itertools.cycle(_SPIN_FRAMES)
@@ -367,16 +406,24 @@ class Spinner:
             await asyncio.sleep(0.08)
             if not (self._enabled and self._active and not self._suppress):
                 continue
-            # 延迟出现：刚 resume 不久先别画，躲开快速文本流造成的闪烁
+            # 延迟出现：刚 resume/set_progress 不久先别画，躲开快速文本流造成的闪烁
             if time.monotonic() - self._resume_at < 0.15:
                 continue
             glyph = next(frames)
             elapsed = int(time.monotonic() - self._turn_start)
-            text = f"{glyph} {self._label} ({elapsed}s · Esc 中断)"
-            # 先 \033[K 擦掉上一帧（含中文/emoji 宽字符），再写新帧——不必再算 pad。
+            tok = self._token_part()
+
+            if self._progress_pct is not None:
+                # —— 进度条模式 ——
+                bar = self._render_bar(self._progress_pct, self._BAR_WIDTH)
+                text = f"{glyph} {self._progress_msg} {bar} ({elapsed}s · {tok}Esc 中断)"
+            else:
+                # —— 转圈模式 ——
+                text = f"{glyph} {self._label} ({elapsed}s · {tok}Esc 中断)"
+
             sys.stdout.write("\r\033[K" + text)
             sys.stdout.flush()
-            self._last_len = len(text)  # 仅作「当前有没有画东西」的标记，不再用于清行
+            self._last_len = len(text)
 
 
 # 后台协程：流式期间持续「非阻塞」轮询键盘，按 Esc 就 set 掉 abort_event。
@@ -404,6 +451,13 @@ async def _watch_esc(abort_event: "threading.Event") -> None:
 async def _stream_response(engine: "QueryEngine", spinner: Spinner, user_input: str) -> None:
     spinner.new_turn()
     spinner.resume(spinner.thinking_label())  # 首个事件到来前 = API 延迟 = 思考中
+    # ★ 注入进度回调：让命令层（如 /compact）能实时更新 spinner 文字 + 进度条
+    def _on_progress(msg: str, percent: Optional[float] = None) -> None:
+        if percent is not None:
+            spinner.set_progress(msg, percent)
+        else:
+            spinner.resume(msg)
+    engine.context.on_progress = _on_progress
     pending_tools: List[str] = []
     # 每轮开始先清掉上一轮可能残留的中断标志，并启动 Esc 监听后台协程。
     abort_event = engine.context.abort_event
@@ -417,6 +471,7 @@ async def _stream_response(engine: "QueryEngine", spinner: Spinner, user_input: 
 
             if event.type == "text_delta":
                 spinner.suppress(True)              # 文本流期间不画，免得 \r 覆盖文字
+                spinner.add_tokens(event.text or "")  # 累计输出 token 数
                 spinner.resume()
             elif event.type == "tool_use":
                 name = (event.tool_use or {}).get("name") or "工具"

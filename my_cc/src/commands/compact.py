@@ -91,16 +91,18 @@ def _build_summary_request(
 
 
 # -----------------------------------------------------------------------------
-# 真实摘要器：调用 API 生成结构化摘要。
-# API 不可用时（如未设密钥）自动回退 mock。
+# 真实摘要器：流式调用 API 生成结构化摘要 + 带百分比的进度条。
 # -----------------------------------------------------------------------------
+# 对应 TS compactConversation() 的 streaming 路径：
+#   queryModelWithStreaming(...) → 逐 token 产出 → onCompactProgress 更新进度。
+# 我们用 anthropic SDK 的 stream() 拿到每个 text_delta，数 token 数 / 估算总量
+# 算出百分比，推给 context.on_progress(msg, percent) 驱动终端进度条。
 async def _real_summarize(
     messages: List[Message],
     custom_instructions: str,
     context: "ToolUseContext",
 ) -> str:
-    """调用真实 API 生成对话摘要。"""
-    # 延迟导入，避免 compact.py 加载时就依赖 anthropic
+    """流式调用真实 API 生成对话摘要，带进度条。"""
     import anthropic
     from anthropic_api import _read_settings, _sanitize_messages
 
@@ -114,20 +116,57 @@ async def _real_summarize(
     summary_request = _build_summary_request(messages, custom_instructions)
     api_messages = _sanitize_messages([summary_request])
 
-    # 非流式调用 —— 摘要不需要打字机效果，一次性拿到结果更快
-    response = await client.messages.create(
+    # 估算摘要输出长度：基于消息数量，每条约 60 token，上下限 100~2000
+    estimated_tokens = max(100, min(2000, len(messages) * 60))
+
+    p = context.on_progress  # 短路别名
+
+    # —— 阶段 1：发送请求（0% → 5%） ——
+    if p:
+        p("发送摘要请求…", 0.0)
+
+    # ★ 流式调用：逐 token 产出，逐个计数 → 实打实的进度条
+    collected: List[str] = []
+    token_count = 0
+
+    async with client.messages.stream(
         model=s["model"],
         max_tokens=4096,
         messages=api_messages,
         system=_COMPACT_SYSTEM_PROMPT,
-    )
+    ) as stream:
+        # —— 阶段 2：等待首 token（5% → 10%） ——
+        if p:
+            p("等待模型响应…", 0.05)
 
-    # 取 assistant 返回的文本
-    for block in response.content:
-        if getattr(block, "type", None) == "text":
-            return block.text
+        async for event in stream:
+            # 用户按了 Esc → 中断
+            if context.is_aborted:
+                return "（摘要已中断。）"
 
-    return "（摘要生成失败：模型未返回文本。）"
+            if event.type == "content_block_delta":
+                delta = event.delta
+                if getattr(delta, "type", None) == "text_delta":
+                    collected.append(delta.text)
+                    token_count += 1
+
+                    # —— 阶段 3：流式生成中（10% → 95%） ——
+                    # 百分比 = 10% + 85% × min(token_count / estimated_tokens, 1)
+                    if p and token_count % 3 == 0:   # 每 3 个 token 更新一次，防刷屏
+                        progress = min(token_count / estimated_tokens, 1.0)
+                        pct = 0.10 + 0.85 * progress
+                        p(f"生成摘要… {token_count} tokens", pct)
+
+    full_text = "".join(collected)
+
+    if not full_text:
+        return "（摘要生成失败：模型未返回文本。）"
+
+    # —— 阶段 4：完成（95% → 100%） ——
+    if p:
+        p(f"摘要完成（{token_count} tokens）", 1.0)
+
+    return full_text
 
 
 async def _safe_summarize(
@@ -135,10 +174,14 @@ async def _safe_summarize(
     custom_instructions: str,
     context: "ToolUseContext",
 ) -> str:
-    """先试真实 API，失败则回退 mock。"""
+    """先试真实 API，失败则回退 mock。对 mock 也模拟进度条，保持 UI 统一。"""
+    # —— 阶段 0：准备压缩（0%） ——
+    if context.on_progress:
+        context.on_progress("准备压缩…", 0.0)
     try:
         return await _real_summarize(messages, custom_instructions, context)
     except Exception:
+        # mock 回退也走一遍模拟进度，让 UI 不突兀
         return await _mock_summarize(messages, custom_instructions, context)
 
 
@@ -147,6 +190,18 @@ async def _mock_summarize(
     custom_instructions: str,
     context: "ToolUseContext",
 ) -> str:
+    """mock 摘要：模拟三段进度让进度条走完（不需要联网）。"""
+    import asyncio
+    p = context.on_progress
+    if p:
+        p("格式化对话…", 0.10)
+        await asyncio.sleep(0.05)
+        p("生成摘要（mock）…", 0.40)
+        await asyncio.sleep(0.05)
+        p("替换历史…", 0.90)
+        await asyncio.sleep(0.05)
+        p("完成", 1.0)
+
     extra = f"（按用户要求侧重：{custom_instructions}）" if custom_instructions else ""
     return f"【对话摘要】本次会话共 {len(messages)} 条消息，已压缩为本摘要。{extra}"
 
