@@ -15,7 +15,7 @@
 load() 调用时才用 importlib 真正 import 那个文件——这才是【货真价实的 lazy-load】
 （对应 TS 的 load: () => import('./compact.js')）。
 
-配套讲义：my_cc/src/commands.md（八节，建议先读讲义再读本文件）
+配套讲义：src/commands.md（八节，建议先读讲义再读本文件）
 演示见同目录的 commands_demo.py / queryengine_demo.py。
 """
 

@@ -3,7 +3,7 @@ Write 工具：创建或覆盖文件（完全重写，不是增量编辑）。
 
 对应 TS 源码 claude-code-main/src/tools/FileWriteTool/FileWriteTool.ts。
 
-📖 整体实现思路、设计决策与取舍见：my_cc/docs/file_write.md
+📖 整体实现思路、设计决策与取舍见：docs/file_write.md
 （本文件内的注释只解释局部细节，不重复整体思路。）
 """
 

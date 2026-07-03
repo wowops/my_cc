@@ -2,7 +2,7 @@
 Edit 工具：对文件做精确字符串替换（old_string → new_string），与 Read 构成「读 → 改」闭环。
 对应 TS 源码 claude-code-main/src/tools/FileEditTool/。
 
-📖 整体实现思路、设计决策与取舍见：my_cc/docs/file_edit.md
+📖 整体实现思路、设计决策与取舍见：docs/file_edit.md
 （本文件内的注释只解释局部细节，不重复整体思路。）
 """
 

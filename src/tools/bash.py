@@ -2,7 +2,7 @@
 Bash 工具：执行 shell 命令；只读命令自动放行，写/危险命令弹窗征求同意。
 是权限系统真正派上用场的地方。对应 TS 源码 claude-code-main/src/tools/BashTool/。
 
-📖 整体实现思路、设计决策与取舍见：my_cc/docs/bash.md
+📖 整体实现思路、设计决策与取舍见：docs/bash.md
 （本文件内的注释只解释局部细节，不重复整体思路。）
 """
 

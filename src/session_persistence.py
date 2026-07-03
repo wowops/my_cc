@@ -6,7 +6,7 @@
     claude-code-main/src/utils/sessionStoragePortable.ts  —— sanitizePath、readHeadAndTail、lite read
     claude-code-main/src/utils/listSessionsImpl.ts        —— listSessions（head/tail 轻量扫描）
 
-核心设计（详见 my_cc/docs/session_persistence.md）：
+核心设计（详见 docs/session_persistence.md）：
     存储目录：~/.my_cc/projects/<sanitize(cwd)>/<sessionId>.jsonl
     · JSONL 一行一条 Entry，只追加（append-only），不重写整文件
     · Entry 包裹 Anthropic message，额外带 uuid / sessionId / cwd / timestamp

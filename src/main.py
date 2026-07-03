@@ -15,9 +15,9 @@
 
 【不需要 API key、不需要联网】（QueryEngine 默认用 mock），直接运行：
 
-    python my_cc/src/main.py                  # 交互式 REPL
-    python my_cc/src/main.py -p "读一下 demo"  # 无头：跑一次后退出
-    echo "读一下 demo" | python my_cc/src/main.py  # 管道 → 自动无头
+    python src/main.py                  # 交互式 REPL
+    python src/main.py -p "读一下 demo"  # 无头：跑一次后退出
+    echo "读一下 demo" | python src/main.py  # 管道 → 自动无头
 """
 
 from __future__ import annotations
@@ -56,15 +56,15 @@ except ImportError:
 # 让「直接 python 运行本文件」时也能 import 同目录的模块
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# 启动时加载 my_cc/.env，把里面的 ANTHROPIC_* 写进环境变量，
+# 启动时加载 .env，把里面的 ANTHROPIC_* 写进环境变量，
 # 这样下面的 select_backend() 才能读到密钥、切到真实模型。
-# 注意：必须显式指定 .env 路径——用户通常从 claude-code/ 根目录运行，
-#      python-dotenv 默认只会从「当前目录往上找」，找不到子目录 my_cc/.env。
+# 注意：必须显式指定 .env 路径——用户可能从仓库根目录运行，
+# .env 在根目录（src/ 的上一层）。
 # 用 try/except 兜底：没装 python-dotenv 也不报错，程序照样能用 mock 跑。
 from pathlib import Path  # noqa: E402
 try:
     from dotenv import load_dotenv
-    _ENV_PATH = Path(__file__).resolve().parent.parent / ".env"  # = my_cc/.env
+    _ENV_PATH = Path(__file__).resolve().parent.parent / ".env"  # 仓库根目录的 .env
     load_dotenv(_ENV_PATH)
 except ImportError:
     pass  # 未安装 python-dotenv：跳过，仅影响「从 .env 读密钥」这一便利

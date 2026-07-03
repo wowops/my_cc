@@ -1,9 +1,9 @@
 # 与完整 `.ts` 源码的差距 / 待改进清单
 
-记录当前 Python 复现版（`my_cc/`）相对真正的 Claude Code（`claude-code-main/`）**有意简化或尚未实现**的部分。
+记录当前 Python 复现版相对真正的 Claude Code（`claude-code-main/`）**有意简化或尚未实现**的部分。
 这是"下一步复现什么"的总账本；README 只讲已有结构，差距集中在这里。
 
-> 已实现部分见 [`../README.md`](../README.md)（代码结构）与 `docs/`（各模块实现思路）。
+> 已实现部分见 [`README.md`](README.md)（代码结构）与 `docs/`（各模块实现思路）。
 
 ---
 

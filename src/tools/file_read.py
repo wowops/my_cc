@@ -2,7 +2,7 @@
 Read 工具：按绝对路径读取文本文件，返回 cat -n 行号格式；并写入 read_file_state 缓存为 Edit 铺路。
 对应 TS 源码 claude-code-main/src/tools/FileReadTool/。
 
-📖 整体实现思路、设计决策与取舍见：my_cc/docs/file_read.md
+📖 整体实现思路、设计决策与取舍见：docs/file_read.md
 （本文件内的注释只解释局部细节，不重复整体思路。）
 """
 

@@ -3,7 +3,7 @@ Grep 工具：用正则在文件【内容】里搜索（Glob 找文件名，Grep
 真实 Claude Code 封装 ripgrep；教学版改用纯 Python（os.walk + re），换取零外部依赖。
 对应 TS 源码 claude-code-main/src/tools/GrepTool/。
 
-📖 整体实现思路、设计决策与取舍见：my_cc/docs/grep.md
+📖 整体实现思路、设计决策与取舍见：docs/grep.md
 （本文件内的注释只解释局部细节，不重复整体思路。）
 """
 

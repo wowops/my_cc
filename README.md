@@ -2,8 +2,8 @@
 
 用 Python 复现 Claude Code 的核心架构（对照 TS 源码快照）。
 
-- 各模块/工具的**实现思路**见 [`my_cc/docs/`](my_cc/docs/)（每个代码文件对应一篇）。
-- 当前复现版与完整 `.ts` 源码的**差距清单**见 [`my_cc/improvements.md`](my_cc/improvements.md)。
+- 各模块/工具的**实现思路**见 [`docs/`](docs/)（每个代码文件对应一篇）。
+- 当前复现版与完整 `.ts` 源码的**差距清单**见 [`improvements.md`](improvements.md)。
 - TS 源码快照在 [`claude-code-main/`](claude-code-main/)（只读分析，非本人作品）。
 
 ---
@@ -14,20 +14,20 @@
 
 ```powershell
 # 交互式 REPL（启动后在 > 后输入消息；/help 看命令，Esc 中断思考，Ctrl+C×2 退出）
-my_cc\.venv\Scripts\python.exe my_cc\src\main.py
+.venv\Scripts\python.exe src\main.py
 
 # 无头模式：跑一次就退出
-my_cc\.venv\Scripts\python.exe my_cc\src\main.py -p "读一下 demo"
+.venv\Scripts\python.exe src\main.py -p "读一下 demo"
 
 # 会话持久化：自动接上次继续聊
-my_cc\.venv\Scripts\python.exe my_cc\src\main.py --continue      # 或 -c
+.venv\Scripts\python.exe src\main.py --continue      # 或 -c
 
 # 列出本项目所有历史会话，挑一个恢复
-my_cc\.venv\Scripts\python.exe my_cc\src\main.py --resume
+.venv\Scripts\python.exe src\main.py --resume
 ```
 
 **默认用 mock**（本地假回复，无需联网）。想接**真实大模型**（如 DeepSeek）：
-打开 `my_cc\.env`，把 `ANTHROPIC_API_KEY=` 换成你的密钥即可——程序启动自动加载 `.env`，
+打开 `.env`，把 `ANTHROPIC_API_KEY=` 换成你的密钥即可——程序启动自动加载 `.env`，
 检测到密钥就切真实 API，否则回退 mock。换厂商只改 `.env` 里的端点/密钥/模型名三项。
 
 ---
@@ -35,7 +35,6 @@ my_cc\.venv\Scripts\python.exe my_cc\src\main.py --resume
 ## 代码结构
 
 ```
-my_cc/
 ├─ src/
 │  ├─ main.py            # CLI 入口：模式路由（交互 REPL / 无头 -p / 管道）、REPL 循环、Spinner、render()
 │  ├─ QueryEngine.py     # Agent Loop：query_loop 主循环、run_tools 调度、build_system_prompt
@@ -84,18 +83,18 @@ main.py（入口/模式路由）
 
 ## demos/ —— 回归脚本 / 演示
 
-集中在 `my_cc/demos/`（与 `src/`、`docs/` 同级）。带断言的可当回归测试，例：`python my_cc/demos/tool_demo.py`。
+集中在 `demos/`（与 `src/`、`docs/` 同级）。带断言的可当回归测试，例：`python demos/tool_demo.py`。
 
 | 脚本 | 验证对象 | 类型 |
 |---|---|---|
-| `my_cc/demos/tool_demo.py` | Tool.py 权限决策表 + 并发/校验/取消 | ✅ 断言（17 条） |
-| `my_cc/demos/file_edit_demo.py` | Edit：读改闭环 / staleness / 唯一性 / 新建 | ✅ 断言（14 条） |
-| `my_cc/demos/file_write_demo.py` | Write：创建/覆盖 / 未读拒绝 / staleness / 参数校验 | ✅ 断言（17 条） |
-| `my_cc/demos/bash_demo.py` | Bash：只读判定 / 高危识别 / 权限决策 / 执行+超时 | ✅ 断言（21 条） |
-| `my_cc/demos/glob_demo.py` | Glob：匹配 / 递归 / 排序 / 目录过滤 / 截断 / 校验 | ✅ 断言（14 条） |
-| `my_cc/demos/grep_demo.py` | Grep：三种 output_mode / 上下文 / glob/type / 分页 / multiline | ✅ 断言（23 条） |
-| `my_cc/demos/tool_discovery_demo.py` | get_tools 自动发现：判据 / 扫描结果 / 有序 / memoize | ✅ 断言（10 条） |
-| `my_cc/demos/commands_demo.py` | 命令分发、别名、memoize、lazy-load、is_enabled | 演示 |
-| `my_cc/demos/QueryEngine_demo.py` | submit_message 两条路径 + /compact 就地压缩 | 演示 |
-| `my_cc/demos/main_demo.py` | 三种运行模式（无头 / 管道判定 / REPL） | 演示 |
-| `my_cc/demos/session_persistence_demo.py` | sanitize / write-read / 去重 / lite read / list / load | ✅ 断言（41 条） |
+| `demos/tool_demo.py` | Tool.py 权限决策表 + 并发/校验/取消 | ✅ 断言（17 条） |
+| `demos/file_edit_demo.py` | Edit：读改闭环 / staleness / 唯一性 / 新建 | ✅ 断言（14 条） |
+| `demos/file_write_demo.py` | Write：创建/覆盖 / 未读拒绝 / staleness / 参数校验 | ✅ 断言（17 条） |
+| `demos/bash_demo.py` | Bash：只读判定 / 高危识别 / 权限决策 / 执行+超时 | ✅ 断言（21 条） |
+| `demos/glob_demo.py` | Glob：匹配 / 递归 / 排序 / 目录过滤 / 截断 / 校验 | ✅ 断言（14 条） |
+| `demos/grep_demo.py` | Grep：三种 output_mode / 上下文 / glob/type / 分页 / multiline | ✅ 断言（23 条） |
+| `demos/tool_discovery_demo.py` | get_tools 自动发现：判据 / 扫描结果 / 有序 / memoize | ✅ 断言（10 条） |
+| `demos/commands_demo.py` | 命令分发、别名、memoize、lazy-load、is_enabled | 演示 |
+| `demos/QueryEngine_demo.py` | submit_message 两条路径 + /compact 就地压缩 | 演示 |
+| `demos/main_demo.py` | 三种运行模式（无头 / 管道判定 / REPL） | 演示 |
+| `demos/session_persistence_demo.py` | sanitize / write-read / 去重 / lite read / list / load | ✅ 断言（41 条） |

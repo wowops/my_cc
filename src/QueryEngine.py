@@ -14,7 +14,7 @@
 ⚠️ 教学说明：本文件用一个【假的】call_claude_api（mock_call_claude_api）来
    模拟 Claude 的流式返回，所以【不需要 API key、不需要联网就能直接运行】：
 
-       python my_cc/src/QueryEngine.py
+       python src/QueryEngine.py
 
    等你理解了循环结构，只要把 config.call_claude_api 换成真正调用
    Anthropic SDK 的函数，整套循环就能驱动真实的 Claude。
@@ -447,7 +447,7 @@ class QueryEngine:
 #     · 如果历史里【还没有】任何工具结果 → AI「决定」调用 Read 工具读一个真实文件
 #     · 如果历史里【已经有】工具结果   → AI 总结一下，纯文本结束（退出循环）
 #   这样就能完整演示一轮「问 AI → 调工具 → 把结果喂回 AI → AI 收尾」的循环。
-#   注意：mock 现在调的是【真正的】FileReadTool（name="Read"），读的是 my_cc/demos/edit_test.txt，
+#   注意：mock 现在调的是【真正的】FileReadTool（name="Read"），读的是 demos/edit_test.txt，
 #   所以即便不联网、用 mock，你也能看到真实的文件内容被读出来。
 _DEMO_FILE = os.path.abspath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "demos", "edit_test.txt")
