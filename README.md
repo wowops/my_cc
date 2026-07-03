@@ -4,7 +4,7 @@
 
 - 各模块/工具的**实现思路**见 [`docs/`](docs/)（每个代码文件对应一篇）。
 - 当前复现版与完整 `.ts` 源码的**差距清单**见 [`improvements.md`](improvements.md)。
-- TS 源码快照在 [`claude-code-main/`](claude-code-main/)（只读分析，非本人作品）。
+- TS 源码快照在 [`claude-code-main/`](../claude-code-main/)（只读分析，非本人作品）。
 
 ---
 
