@@ -37,7 +37,7 @@ from commands.clear import _clear_terminal_screen  # type: ignore[import]
 def _print_message_history(messages: list) -> None:
     """把加载回来的消息渲染成聊天记录摘要（和 banner 一起构成「恢复成功」的视觉反馈）。
 
-    只取每条消息的前 120 字；工具调用只显示工具名。
+    只取每条消息的前 120 字；跳过纯工具调用/结果消息。
     """
     if not messages:
         return
@@ -51,7 +51,6 @@ def _print_message_history(messages: list) -> None:
         content = msg.get("content", [])
 
         texts: list[str] = []
-        tool_names: list[str] = []
         if isinstance(content, list):
             for block in content:
                 if not isinstance(block, dict):
@@ -60,13 +59,10 @@ def _print_message_history(messages: list) -> None:
                     t = (block.get("text") or "").replace("\n", " ").strip()
                     if t:
                         texts.append(t)
-                elif block.get("type") == "tool_use":
-                    name = block.get("name") or "?"
-                    tool_names.append(name)
 
-        # 跳过纯工具结果消息（user role 只有 tool_result block，没有文本也没有工具调用）
+        # 跳过纯工具结果消息（user role 只有 tool_result block，没有文本）
         # —— 这些是模型调工具后喂回来的执行结果，内部记账用的，给用户看没意义。
-        if not texts and not tool_names:
+        if not texts:
             continue
 
         text = " ".join(texts)
@@ -78,8 +74,7 @@ def _print_message_history(messages: list) -> None:
         else:
             prefix = "🤖 助手"
 
-        suffix = f"  [🔧 {', '.join(tool_names)}]" if tool_names else ""
-        print(f"  {prefix}: {text}{suffix}")
+        print(f"  {prefix}: {text}")
 
     print("━" * 58 + "\n")
 
