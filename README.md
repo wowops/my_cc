@@ -2,8 +2,9 @@
 
 用 Python 复现 Claude Code 的核心架构（对照 TS 源码快照）。
 
-- 各模块/工具的**实现思路**见 `docs/`（每个代码文件对应一篇）。
-- 当前复现版与完整 `.ts` 源码的**差距清单**见 [`improvements.md`](improvements.md)。
+- 各模块/工具的**实现思路**见 [`my_cc/docs/`](my_cc/docs/)（每个代码文件对应一篇）。
+- 当前复现版与完整 `.ts` 源码的**差距清单**见 [`my_cc/improvements.md`](my_cc/improvements.md)。
+- TS 源码快照在 [`claude-code-main/`](claude-code-main/)（只读分析，非本人作品）。
 
 ---
 
@@ -83,18 +84,18 @@ main.py（入口/模式路由）
 
 ## demos/ —— 回归脚本 / 演示
 
-集中在 `demos/`（与 `src/`、`docs/` 同级）。带断言的可当回归测试，例：`python my_cc/demos/tool_demo.py`。
+集中在 `my_cc/demos/`（与 `src/`、`docs/` 同级）。带断言的可当回归测试，例：`python my_cc/demos/tool_demo.py`。
 
 | 脚本 | 验证对象 | 类型 |
 |---|---|---|
-| `demos/tool_demo.py` | Tool.py 权限决策表 + 并发/校验/取消 | ✅ 断言（17 条） |
-| `demos/file_edit_demo.py` | Edit：读改闭环 / staleness / 唯一性 / 新建 | ✅ 断言（14 条） |
-| `demos/file_write_demo.py` | Write：创建/覆盖 / 未读拒绝 / staleness / 参数校验 | ✅ 断言（17 条） |
-| `demos/bash_demo.py` | Bash：只读判定 / 高危识别 / 权限决策 / 执行+超时 | ✅ 断言（21 条） |
-| `demos/glob_demo.py` | Glob：匹配 / 递归 / 排序 / 目录过滤 / 截断 / 校验 | ✅ 断言（14 条） |
-| `demos/grep_demo.py` | Grep：三种 output_mode / 上下文 / glob/type / 分页 / multiline | ✅ 断言（23 条） |
-| `demos/tool_discovery_demo.py` | get_tools 自动发现：判据 / 扫描结果 / 有序 / memoize | ✅ 断言（10 条） |
-| `demos/commands_demo.py` | 命令分发、别名、memoize、lazy-load、is_enabled | 演示 |
-| `demos/QueryEngine_demo.py` | submit_message 两条路径 + /compact 就地压缩 | 演示 |
-| `demos/main_demo.py` | 三种运行模式（无头 / 管道判定 / REPL） | 演示 |
-| `demos/session_persistence_demo.py` | sanitize / write-read / 去重 / lite read / list / load | ✅ 断言（41 条） |
+| `my_cc/demos/tool_demo.py` | Tool.py 权限决策表 + 并发/校验/取消 | ✅ 断言（17 条） |
+| `my_cc/demos/file_edit_demo.py` | Edit：读改闭环 / staleness / 唯一性 / 新建 | ✅ 断言（14 条） |
+| `my_cc/demos/file_write_demo.py` | Write：创建/覆盖 / 未读拒绝 / staleness / 参数校验 | ✅ 断言（17 条） |
+| `my_cc/demos/bash_demo.py` | Bash：只读判定 / 高危识别 / 权限决策 / 执行+超时 | ✅ 断言（21 条） |
+| `my_cc/demos/glob_demo.py` | Glob：匹配 / 递归 / 排序 / 目录过滤 / 截断 / 校验 | ✅ 断言（14 条） |
+| `my_cc/demos/grep_demo.py` | Grep：三种 output_mode / 上下文 / glob/type / 分页 / multiline | ✅ 断言（23 条） |
+| `my_cc/demos/tool_discovery_demo.py` | get_tools 自动发现：判据 / 扫描结果 / 有序 / memoize | ✅ 断言（10 条） |
+| `my_cc/demos/commands_demo.py` | 命令分发、别名、memoize、lazy-load、is_enabled | 演示 |
+| `my_cc/demos/QueryEngine_demo.py` | submit_message 两条路径 + /compact 就地压缩 | 演示 |
+| `my_cc/demos/main_demo.py` | 三种运行模式（无头 / 管道判定 / REPL） | 演示 |
+| `my_cc/demos/session_persistence_demo.py` | sanitize / write-read / 去重 / lite read / list / load | ✅ 断言（41 条） |
